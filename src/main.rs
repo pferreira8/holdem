@@ -1,7 +1,38 @@
 use rand::{Rng};
-use std::thread;
+use std::time::Instant;
 
-#[derive(Debug)]
+//TODO IMPLEMENTATION
+// #[derive(Debug, PartialEq)]
+// enum HandRank {
+//     HighCard,
+//     Pair,
+//     TwoPair,
+//     ThreeOfAKind,
+//     Straight,
+//     Flush,
+//     FullHouse,
+//     FourOfAKind,
+//     StraightFlush,
+//     RoyalFlush,
+// }
+
+
+
+fn main() {
+    // need to know when to add a new deck
+    let start_time = Instant::now();
+    simulation_builder(1000000);
+
+    track_runtime(start_time);
+}
+fn track_runtime(pass_start: Instant) {
+    let end_time = Instant::now();
+    let duration = end_time.duration_since(pass_start);
+
+    println!("Time elapsed: {:?}", duration);
+}
+//STRUCT AND IMPL LOGIC
+#[derive(Debug, PartialEq)]
 enum Suit {
     Hearts,
     Diamonds,
@@ -9,7 +40,7 @@ enum Suit {
     Spades,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Rank {
     Ace,
     Two,
@@ -25,35 +56,30 @@ enum Rank {
     Queen,
     King,
 }
-impl PartialEq for Rank {
-    fn eq(&self, other: &Self) -> bool {
-        self == other
-    }
-}
 
 #[derive(Debug)]
-struct Card<'a> {
-    rank: &'a Rank,
-    suit: &'a Suit,
+struct Card {
+    rank: &'static Rank,
+    suit: &'static Suit,
 }
 
-impl Card<'static> {
-    fn new(rank: &'static Rank, suit: &'static Suit) -> Card<'static> {
+impl Card {
+    fn new(rank:&'static Rank, suit:&'static Suit) -> Card {
         Card { rank, suit}
     }
 }
 
 
 #[derive(Debug)]
-struct Deck<'a> {
-    cards: Vec<Card<'a>>,
+struct Deck {
+    cards: Vec<Card>,
     // ranks: &'a [Rank],
     // suits: &'a [Suit],
 }
 
-impl<'a> Deck<'a> {
+impl Deck {
     //ranks: &'a [Rank], suits: &'a [Suit]
-    fn new() -> Deck<'a> {
+    fn new() -> Deck {
         let ranks = &[Rank::Ace, Rank::Two, Rank::Three, Rank::Four, Rank::Five, Rank::Six, Rank::Seven, Rank::Eight, Rank::Nine, Rank::Ten, Rank::Jack, Rank::Queen, Rank::King];
         let suits = &[Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades];
         let mut cards = vec![];
@@ -73,7 +99,7 @@ impl<'a> Deck<'a> {
         }
     }
 
-    fn deal(&mut self, n: usize) -> Option<Vec<Card<'a>>> {
+    fn deal(&mut self, n: usize) -> Option<Vec<Card>> {
         if n > self.cards.len() {
             None
         } else {
@@ -83,104 +109,67 @@ impl<'a> Deck<'a> {
     }
 }
 #[derive(Debug)]
-struct Hand<'a> {
-    cards: Vec<Card<'a>>,
+struct Hand {
+    cards: Vec<Card>,
 }
 
-impl<'a> Hand<'a> {
-    // fn new(cards: [Card<'static>; 5]) -> Hand {
-    //     Hand { cards }
-    // }
-    fn paired_hand(&self) -> bool {
-        if self.cards[0].rank == self.cards[1].rank {
-            true
-        } else {
-            false
+#[derive(Debug)]
+enum HandError {
+    InvalidSize(usize),
+}
+
+impl Hand {
+    fn new(cards: Vec<Card>) -> Result<Self, HandError> {
+        if cards.len() != 2 {
+            return Err(HandError::InvalidSize(cards.len()));
         }
+        Ok(Self { cards })
+    }
+    fn paired_hand(&self) -> bool {
+        self.cards[0].rank == self.cards[1].rank
+    }
+
+    fn suited_hand(&self) -> bool {
+        self.cards[0].suit == self.cards[1].suit
     }
     
 }
-// this is like a new function
-impl<'a> From<Vec<Card<'a>>> for Hand<'a> {
-    fn from(cards: Vec<Card<'a>>) -> Self {
-        Self { cards }
-    }
-}
-// #[derive(Debug, PartialEq)]
-// enum HandRank {
-//     HighCard,
-//     Pair,
-//     TwoPair,
-//     ThreeOfAKind,
-//     Straight,
-//     Flush,
-//     FullHouse,
-//     FourOfAKind,
-//     StraightFlush,
-//     RoyalFlush,
-// }
 
-
-fn check_hand(c1: &Rank, c2: &Rank) -> bool {
-    if c1==c2 {
-        true
-    } else {
-        false
-    }
-}
-
-fn simulate_draw() -> bool {
+fn simulation_builder(n_sims: usize)  {
     let mut deck = Box::new(Deck::new());
+    let mut pair_tracker = 0;
+    let mut suit_tracker = 0;
+    for _ in 0..n_sims {
+        deck.shuffle();
+        let rng_hand = deck.deal(2).map(|cards| Hand::new(cards));
+        // error handler to use a new deck
+        if deck.cards.is_empty() {
+            deck = Box::new(Deck::new());
 
-    // println!("Deck before shuffling: {:?}", deck);
-    deck.shuffle();
-    // println!("Deck after shuffling: {:?}", deck);
-
-    let hand = deck.deal(2).map(|cards| Hand::from(cards));
-    // let mut xpair = Vec::<Rank>::new();
-    if let Some(dealt) = hand {
-        assert_eq!(dealt.cards.len(), 2);
-        println!("Dealt hand: {:?}", dealt.cards);
-
-        // stack overflow when workin with the static lifetime classes
-        // if let Some(crd1) = dealt.cards.get(0) {
-        //     if let Some(crd2) = dealt.cards.get(1) {
-        //         if check_hand(crd1.rank.to_owned(), crd2.rank.to_owned()) {
-        //             println!("Pair found: {:?}", crd1.rank);
-        //             return true;
-        //         }
-        //     }
-        // }
-    }
-    //stop condition for testing not really gonna remain here
-    false
+        }
+        match rng_hand {
+            Some(Ok(hand)) => {
+                // println!("{:?}", hand.cards);
+                if hand.paired_hand() {
+                    // println!("Paired hand");
+                    pair_tracker+=1;
+                } 
+                if hand.suited_hand() {
+                    suit_tracker+=1;
+                    // println!("Suited hand");
+                }
+            },
+            _ => println!("No hand dealt")
+        }
+        // TODO ADD EVALUATION LOGIC 
+        // after running x sims, show stats at that point, pause 5 seconds
+        
+    // END 
+    } // FOR LOOP
+    println!("Out of {} iterations: \n{} had a matching pair,\n{} were suited preflop \n", 
+        n_sims, 
+        pair_tracker, 
+        suit_tracker);
+    println!("sample probability of pair: {:?}%", pair_tracker as f32 / n_sims as f32);
+    println!("sample probability of suited hand: {:?}%", suit_tracker as f32 / n_sims as f32);
 }
-#[tokio::main]
-async fn main() {
-    // let builder = thread::Builder::new().stack_size(12 * 1024 * 1024);
-    // let _ = builder.spawn(|| {
-    let mut iterations = 0;
-    let max_iterations = 10;
-
-    while !simulate_draw() && iterations < max_iterations {
-        iterations += 1;
-    }
-
-    if iterations == max_iterations {
-        println!("\n Maximum number of iterations reached.");
-    }
-        // thread code here
-    // }).unwrap();
-
-}
-
-    // EVALUATE PROGRESS PRINTOUT
-    //     if i % 100 == 0 {
-    //         println!("Simulations completed: {}", i);
-    //     }
-    //
-    // after running 100 sims, show stats at that point, pause 5 seconds
-    // println!("Out of {} iterations, {} had a matching pair", num_iterations, matching_pairs);
-
-    // SAVE THIS 
-    // let hand = deck.deal(2).map(|cards| Hand::from(cards))
