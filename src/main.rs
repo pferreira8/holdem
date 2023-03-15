@@ -16,12 +16,20 @@ use std::time::Instant;
 //     RoyalFlush,
 // }
 
-
+use clap::Parser;
+/// arg for number of simulations to run
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Number of times to greet
+    #[arg(short = 'n', default_value_t = 1000000)]
+    num_simulations: u32,
+}
 
 fn main() {
-    // need to know when to add a new deck
+    let args = Args::parse();
     let start_time = Instant::now();
-    simulation_builder(1000000);
+    simulation_builder(args.num_simulations);
 
     track_runtime(start_time);
 }
@@ -135,7 +143,7 @@ impl Hand {
     
 }
 
-fn simulation_builder(n_sims: usize)  {
+fn simulation_builder(n_sims: u32)  {
     let mut deck = Box::new(Deck::new());
     deck.shuffle();
     let mut pair_tracker = 0;
