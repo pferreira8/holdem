@@ -137,14 +137,15 @@ impl Hand {
 
 fn simulation_builder(n_sims: usize)  {
     let mut deck = Box::new(Deck::new());
+    deck.shuffle();
     let mut pair_tracker = 0;
     let mut suit_tracker = 0;
-    for _ in 0..n_sims {
-        deck.shuffle();
+    for _ in 0..n_sims {    
         let rng_hand = deck.deal(2).map(|cards| Hand::new(cards));
         // error handler to use a new deck
         if deck.cards.is_empty() {
             deck = Box::new(Deck::new());
+            deck.shuffle();
 
         }
         match rng_hand {
