@@ -1,4 +1,4 @@
-#Texas-Hold'em Draw Simulator
+# Texas-Hold'em Draw Simulator
 This is a work-in-progress simulator for Texas Hold'em draw game. Currently, it can detect pairs and suited hands. You can pass the number of simulations you wish to perform as a command-line argument or in the main function.
 
 To make life easier, you can throw this in a bash script to run the program:
