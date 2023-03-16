@@ -1,6 +1,6 @@
-use rand::{Rng};
-use std::time::Instant;
 
+use std::time::Instant;
+use rand::Rng;
 //TODO IMPLEMENTATION
 // #[derive(Debug, PartialEq)]
 // enum HandRank {
@@ -24,13 +24,49 @@ struct Args {
     /// Number of times to greet
     #[arg(short = 'n', default_value_t = 1000000)]
     num_simulations: u32,
+    #[arg(short = 'r', default_value_t = 0, required=false)]
+    repeat_n_sims: u32,
+    // hand_lookup: String,
+    // target_hand: String,
 }
+// struct TargetHand {
+//     aces: String,
+//     kings: String, 
+    
+// }
+
+// impl TargetHand {
+//     fn new(target: &str) {
+//         match target {
+//             "aa" | "AA" => {
+//                 // let c1 = Card::new(&Rank::Ace, &Suit::generate_random());
+//                 // let c2 = Card::new(&Rank::Ace, &Suit::generate_random());
+//                 // Hand::new(vec![c1, c2]).unwrap()
+//             }
+//             _ => {
+
+//             }
+//         }
+
+//     }
+// }
 
 fn main() {
     let args = Args::parse();
     let start_time = Instant::now();
-    simulation_builder(args.num_simulations);
-
+    let optional_sims: u32 = args.repeat_n_sims;
+    // run one simulation
+    if optional_sims.clone() == 0 {
+        simulation_builder(args.num_simulations);
+    // optional arg -r was passed to repeat a custom simulation 'n' times
+    } else {
+        //repeat a custom simulation with n-hands optional and checking for any type of hand
+        for sample_num in 0..optional_sims {
+            println!("RUNNING SIMULATION #{:?}\n", sample_num+1);
+           simulation_builder(args.num_simulations);
+        }
+    }
+        
     track_runtime(start_time);
 }
 fn track_runtime(pass_start: Instant) {
@@ -39,14 +75,24 @@ fn track_runtime(pass_start: Instant) {
 
     println!("Time elapsed: {:?}", duration);
 }
+
 //STRUCT AND IMPL LOGIC
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Parser)]
 enum Suit {
     Hearts,
     Diamonds,
     Clubs,
     Spades,
 }
+impl Suit {
+    fn randomize_suit() -> Suit {
+        let mut suit_rng = rand::thread_rng();
+        let suits = Deck::get_suits();
+        let rand_suit = suit_rng.gen_range(0..suits.len());
+        suits.get(rand_suit).unwrap().to_owned()
+}
+}
+
 
 #[derive(Debug, PartialEq)]
 enum Rank {
@@ -98,6 +144,18 @@ impl Deck {
         }
         Deck { cards }
     }
+    
+    fn get_suits() -> Vec<Suit> {
+        vec![Suit::Clubs, Suit::Diamonds, 
+            Suit::Hearts, Suit::Spades]
+    }
+    
+    fn get_rank_list() -> Vec<Rank> {
+        vec![Rank::Ace, Rank::Two, Rank::Three, 
+            Rank::Four, Rank::Five, Rank::Six, 
+            Rank::Seven, Rank::Eight, Rank::Nine, 
+            Rank::Ten, Rank::Jack, Rank::Queen, Rank::King]
+    }
 
     fn shuffle(&mut self) {
         let mut rng = rand::thread_rng();
@@ -140,7 +198,9 @@ impl Hand {
     fn suited_hand(&self) -> bool {
         self.cards[0].suit == self.cards[1].suit
     }
-    
+    fn got_aces(&self) -> bool {
+        self.cards[0].rank.eq(&Rank::Ace) && self.cards[1].rank.eq(&Rank::Ace)
+    }
 }
 
 fn simulation_builder(n_sims: u32)  {
@@ -148,6 +208,7 @@ fn simulation_builder(n_sims: u32)  {
     deck.shuffle();
     let mut pair_tracker = 0;
     let mut suit_tracker = 0;
+    let mut rockets = 0;
     for _ in 0..n_sims {    
         let rng_hand = deck.deal(2).map(|cards| Hand::new(cards));
         // error handler to use a new deck
@@ -167,6 +228,9 @@ fn simulation_builder(n_sims: u32)  {
                     suit_tracker+=1;
                     // println!("Suited hand");
                 }
+                if hand.got_aces() {
+                    rockets+=1;
+                }
             },
             _ => println!("No hand dealt")
         }
@@ -179,6 +243,9 @@ fn simulation_builder(n_sims: u32)  {
         n_sims, 
         pair_tracker, 
         suit_tracker);
-    println!("sample probability of pair: {:?}%", pair_tracker as f32 / n_sims as f32);
-    println!("sample probability of suited hand: {:?}%", suit_tracker as f32 / n_sims as f32);
+        
+    println!("POCKET ROCKET COUNTER: {:?}", rockets);
+    println!("sample probability of aces: {:?}%", rockets as f32 / n_sims as f32);
+    println!("sample probability of any pair: {:?}%", pair_tracker as f32 / n_sims as f32);
+    println!("sample probability of any suited hand: {:?}%\n\n", suit_tracker as f32 / n_sims as f32);
 }
