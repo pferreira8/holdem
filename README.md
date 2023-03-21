@@ -12,7 +12,7 @@ execute holdem.sh in bash shell
 sh holdem.sh
 ```
 
-##ARGS
+## ARGS
 -n -> number of simulations to run 
         default value -> 1,000,000
 -r -> repeat a specified simulation an arbitrary number of times
