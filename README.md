@@ -1,15 +1,25 @@
 # Texas-Hold'em Draw Simulator
-This is a work-in-progress. Currently, it can detect pairs and suited hands. You can pass the number of simulations you wish to perform as a command-line argument or in the main function.
+This is a work-in-progress. Currently, it runs a Monte-Carlo simulation to showcase the pair distribution. This project is primarily for me to understand the variance impact of # of hands dealt in a simulation.
+
+You can pass the number of simulations you wish to perform as a command-line argument or in the main function.
 
 To make life easier, you can throw this in a bash script to run the program:
 ```
+file-example name holdem.sh
 cargo build --release && cargo run --release
+
+execute holdem.sh in bash shell
+sh holdem.sh
 ```
 
-## OPTIONAL ARG: -n -> number of simulations to run 
-                    default value -> 1,000,000
+##ARGS
+-n -> number of simulations to run 
+        default value -> 1,000,000
+-r -> repeat a specified simulation an arbitrary number of times
+        default value -> 0
                     
-release benchmark: it takes ~70ms to evaluate one million dealt hands.
+##updated benchmark: 
+it takes ~87ms to evaluate a pair distribution of one million dealt hands.
 
 ### To-Do
 Build a dealer class that manages state for each simulation and encapsulate the logic within that.
