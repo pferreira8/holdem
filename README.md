@@ -13,10 +13,8 @@ sh holdem.sh
 ```
 
 ## Args
--n -> number of simulations to run 
-        default value -> 1,000,000
--r -> repeat a specified simulation an arbitrary number of times
-        default value -> 0
+-n -> number of simulations to run  (default value: 1,000,000) \n
+-r -> repeat a specified simulation an arbitrary number of times (default value: 0)
                     
 ###updated benchmark: 
 it takes ~87ms to evaluate a pair distribution of one million dealt hands.
