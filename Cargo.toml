@@ -7,4 +7,8 @@ edition = "2021"
 
 [dependencies]
 clap = {version="4.1.8", features=["derive"]}
+context = "3.0.0"
 rand = "0.8.5"
+
+[profile.release]
+debug = true

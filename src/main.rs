@@ -1,40 +1,24 @@
+use clap::Parser;
 use rand::Rng;
 use std::fmt;
+use std::thread;
 use std::time::Instant;
-use clap::Parser;
 /// arg for number of simulations to run
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Number of times to greet
+    /// Number of hands dealt in a sim
     #[arg(short = 'n', default_value_t = 1000000)]
     num_simulations: u32,
-    #[arg(short = 'r', default_value_t = 0, required = false)]
+    ///Amount of sims to run
+    #[arg(short = 'r', default_value_t = 1, required = false)]
     repeat_n_sims: u32,
-    // hand_lookup: String,
-    // target_hand: String,
 }
-
-//DEPRecTaING PROBABLY
-// impl ParseTargetHandOptions {
-//     fn new(target: &str) {
-//         match target {
-//             "aa" | "AA" => {
-//                 // let c1 = Card::new(&Rank::Ace, &Suit::generate_random());
-//                 // let c2 = Card::new(&Rank::Ace, &Suit::generate_random());
-//                 // Hand::new(vec![c1, c2]).unwrap()
-//             }
-//             _ => {
-
-//             }
-//         }
-
-//     }
-// }
 
 fn main() {
     let args = Args::parse();
     let start_time = Instant::now();
+
     // optional sims comes from the -r flag = "repeat"
     let optional_sims: u32 = args.repeat_n_sims;
     // run one simulation
@@ -80,7 +64,7 @@ fn track_simulation_pairs(
         _ => {} //skip any non-pair hand combos
     }
     //update pair distribution tracker and return it
-    return pair_distribution
+    return pair_distribution;
 }
 //STRUCT AND IMPL LOGIC
 #[derive(Default)]
@@ -244,7 +228,7 @@ impl Hand {
     fn paired_hand(&self) -> bool {
         self.cards[0].rank == self.cards[1].rank
     }
-    fn int_val(&self) -> f32{
+    fn int_val(&self) -> f32 {
         1.5
         //-> Result<HandRank, HandError>
     }
@@ -260,7 +244,7 @@ impl Hand {
 #[derive(Debug, PartialEq, PartialOrd)]
 #[allow(dead_code)]
 enum HandRank {
-    HighCard(u8), 
+    HighCard(u8),
     Pair(u8),
     TwoPair(u8),
     ThreeOfAKind(u8),
@@ -289,31 +273,31 @@ impl HandRank {
     }
 }
 // this needs to be outside the scope of hands ==>
-struct EvaluateHands {}
+// struct EvaluateHands {}
 
-impl EvaluateHands {
-    fn evaluate(&self, hands: &Vec<Hand>) -> Vec<(Hand, f32)> {
-        let mut scores: Vec<(&Hand, f32)> = Vec::new();
+// impl EvaluateHands {
+//     fn evaluate(&self, hands: &Vec<Hand>) -> Vec<(Hand, f32)> {
+//         let mut scores: Vec<(&Hand, f32)> = Vec::new();
 
-        for hand in hands {
-            let mut score = 0.0;
+//         for hand in hands {
+//             let mut score = 0.0;
 
-            if let Some(pair_value) = hand.pair_value() {
-                score += (pair_value as f32) * 2.0;
-            } else {
-                // Add half of the highest card value as a high card bonus
-                score += (hand.highest_card_value() as f32) / 2.0;
-            }
+//             if let Some(pair_value) = hand.pair_value() {
+//                 score += (pair_value as f32) * 2.0;
+//             } else {
+//                 // Add half of the highest card value as a high card bonus
+//                 score += (hand.highest_card_value() as f32) / 2.0;
+//             }
 
-            scores.push((hand, score));
-        }
+//             scores.push((hand, score));
+//         }
 
-        // Sort by score in descending order
-        scores.sort_by(|(_, score1), (_, score2)| score2.partial_cmp(score1).unwrap());
+//         // Sort by score in descending order
+//         scores.sort_by(|(_, score1), (_, score2)| score2.partial_cmp(score1).unwrap());
 
-        scores
-    }
-}
+//         scores
+//     }
+// }
 
 #[derive(Debug)]
 enum HandError {
@@ -326,7 +310,7 @@ struct Player {
     chips: u16,
 }
 impl Player {
-    fn new(&mut self, dealt_hand: Hand, chip_count:u16) {
+    fn new(&mut self, dealt_hand: Hand, chip_count: u16) {
         self.hand = dealt_hand;
         self.chips = chip_count;
     }
@@ -339,8 +323,7 @@ struct Game {
     table_cards: Vec<Card>,
 }
 impl Game {
-    fn winning_hand(self) {
-    }
+    fn winning_hand(self) {}
 }
 
 fn simulation_builder(n_sims: u32) {
@@ -369,19 +352,4 @@ fn simulation_builder(n_sims: u32) {
     //RETURN PAIR TRACKER STRUCT
     println!("randomized hands dealt: \n {}", n_sims);
     println!("pair distribution \n {}", pair_tracker);
-
-    // NEW PLAN
-    // SHOW OUTLIER RESULTS
-    
-    
-    //STATISTICS OUTPUT
-    // println!("Out of {} iterations: \n{} had a matching pair,\n{} were suited preflop \n",
-    //     n_sims,
-    //     pair_tracker,
-    //     suit_tracker);
-
-    // println!("POCKET ROCKET COUNTER: {:?}", rockets);
-    // println!("sample probability of aces: {:?}%", rockets as f32 / n_sims as f32);
-    // println!("sample probability of any pair: {:?}%", pair_tracker as f32 / n_sims as f32);
-    // println!("sample probability of any suited hand: {:?}%\n\n", suit_tracker as f32 / n_sims as f32);
 }
