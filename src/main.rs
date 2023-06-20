@@ -166,7 +166,7 @@ impl Deck {
             Rank::King,
         ];
         let suits = &[Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades];
-        let mut cards = vec![];
+        let mut cards = Vec::new();
         for suit in suits {
             for rank in ranks {
                 cards.push(Card::new(rank, suit));
@@ -240,38 +240,7 @@ impl Hand {
     // }
 }
 
-//TODO IMPLEMENTATION
-#[derive(Debug, PartialEq, PartialOrd)]
-#[allow(dead_code)]
-enum HandRank {
-    HighCard(u8),
-    Pair(u8),
-    TwoPair(u8),
-    ThreeOfAKind(u8),
-    Straight(u8),
-    Flush(u8),
-    FullHouse(u8),
-    FourOfAKind(u8),
-    StraightFlush(u8),
-    RoyalFlush(u8),
-}
-impl HandRank {
-    fn new(hand_rank: u8) -> Self {
-        match hand_rank {
-            1 => HandRank::HighCard(1),
-            2 => HandRank::Pair(2),
-            3 => HandRank::TwoPair(3),
-            4 => HandRank::ThreeOfAKind(4),
-            5 => HandRank::Straight(5),
-            6 => HandRank::Flush(6),
-            7 => HandRank::FullHouse(7),
-            8 => HandRank::FourOfAKind(8),
-            9 => HandRank::StraightFlush(9),
-            10 => HandRank::RoyalFlush(10),
-            _ => panic!("Invalid HandRank"),
-        }
-    }
-}
+
 // this needs to be outside the scope of hands ==>
 // struct EvaluateHands {}
 
