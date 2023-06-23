@@ -1,57 +1,43 @@
-use holdem::{HandScore, Game, Player, Hand};
-use std::borrow::{BorrowMut};
+use holdem::{HandScore, Game, Player, Hand, GameMaster};
 use std::{error::Error};
 
 
-fn setup_players() -> Vec<Player> {
-    let tplayer = Player::new("jay".to_string() );
-    let tplayer2 = Player::new("phil".to_string() );
+fn setup_players(count: Option<u8>) -> Vec<Player> {
+    let mut vp: Vec<Player> = Vec::new();
+    let hero = Player::new("phil".to_string() );
+    vp.push(hero);
 
-    vec![tplayer, tplayer2]
+    if let Some(ct) = count {
+        // define a specific amount of players 
+        for _ in 0..ct {
+            vp.push(Player::new("test".to_string()));
+        }
+    } else {
+        //default to 8 player table
+        for _ in 0..7 {
+            vp.push(Player::new("test".to_string()));
+        }
+
+       
+    }
+    vp
 }
 fn main() -> Result<(), Box< dyn Error>> {
-    let hs = HandScore::new();
-    hs.display_point_values();
-
+    // let hs = HandScore::new();
+    // hs.display_point_values();
+    let player_group = setup_players(Some(3 as u8));
     // main logic encapsulated in Game struct
-    let mut g = Game::new();
+    let mut game_handler = GameMaster::new(Game::new(), player_group);
 
-    let player_group = setup_players();
+    game_handler.play()?;
 
-    for mut p in player_group {
-        let rng_hand = g.borrow_mut().deck.deal(2).map(|cards| Hand::new(cards));
-
-        if let Some(h) = rng_hand {
-            match h {
-                Ok(h) => {
-                    p.add_hand(h);
-                    p.eval_hand();
-
-                    g.add_player(p)?;
-                }
-                Err(err) => {
-                    eprintln!("{:?}", err);
-                }
-            }
-        }
+    for p in game_handler.clone().gamestate.players.unwrap() {
+        println!("{:?}", p);
     }
-
-    let flop = g.borrow_mut().deck.deal(3).map(|cards| Hand::new(cards));
-    
-    // ADD FLOP TO GAME OBJECT
-    if let Some(h) = flop {
-        match h {
-            Ok(h) => {
-                g.table_cards = Some(h.cards);
-            }
-            Err(err) => {
-                eprintln!("{:?}", err);
-            }
-        }
-    }
-    // NOW THE FLOP IS WITHIN the g : Game object
-    g.show_players();
-
+    // let x = game_handler.gamestate.clone();
+    // x.show_players();
+    // x.deck.check_current_deck();
+    game_handler.update_game_status();
     Ok(())
 
 }
