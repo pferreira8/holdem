@@ -1,8 +1,99 @@
 use std::error::Error;
-
 use rand::Rng;
 use clap::Parser;
+#[derive(Debug, Clone)]
+pub struct GameMaster {
+    pub gamestate: Game,
+    pub players: Vec<Player>
+}
+impl GameMaster {
+    pub fn new(g: Game, vp: Vec<Player>) -> Self {
+        Self {
+            gamestate: g,
+            players: vp,
+        }
+    }
+    pub fn play(&mut self) -> Result<(), Box<dyn Error>> {
+        self.initial_deal()?;
+        self.deal_flop()?;
+        Ok(())
+    }
+    pub fn update_game_status(&mut self) {
+        println!("TABLE CARDS: {:?} \n ", self.gamestate.table_cards);
+        if let Some(players_state) = self.gamestate.players.clone() {
+            self.players = players_state;
+        }
 
+        for p in &self.players {
+            println!("PLAYER HAND: {:?} \n", p);
+        }
+    }
+    // INTERNAL FUNCTIONS
+    fn initial_deal(&mut self) -> Result<(), Box<dyn Error>> {
+        
+        for mut p in self.players.clone() {
+            let rng_hand = self.gamestate.deck.deal(2).map(|cards| Hand::new(cards));
+
+            if let Some(h) = rng_hand {
+                match h {
+                    Ok(h) => {
+                        p.add_hand(h);
+                        // eval hand assigns the initial score attribute to each Player
+                        p.eval_hand();
+
+                        self.gamestate.add_player(p)?;
+                    }
+                    Err(err) => {
+                        eprintln!("{:?}", err);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+    fn deal_flop(&mut self) -> Result<(), Box<dyn Error>> {
+        // burn a card 
+        let _ = &self.gamestate.deck.deal(1); // does not need to be assigned to a hand like below
+        let flop = self.gamestate.deck.deal(3).map(|cards| Hand::new(cards));
+        
+        // ADD FLOP TO GAME OBJECT
+        if let Some(h) = flop {
+            match h {
+                Ok(h) => {
+                    self.gamestate.table_cards = Some(h.clone().cards);
+
+                    if let Some(updated_players) = self.gamestate.players.as_mut() {
+                        for p in updated_players {
+                            p.update_hand(h.clone());
+                            // eval is broken at this stage
+                            // need an update_eval type function
+                            p.eval_hand();
+                        }
+                    }
+                    // EXPERIMENTAL CODE ABOVE
+                    // COPYING FLOP CARDS INTO EACH PLAYERS HAND
+                    // THIS WILL MAKE IT EASIER TO LOOP
+                    // AND DO A MAXIMIZING FUNCTION 
+                    // THIS SHIT BROKE RN
+                    // REPLACES HAND WITH FLOP CARDS
+                }
+                Err(err) => {
+                    eprintln!("{:?}", err);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+/*
+
+To calculate the probability of 
+making a pair before the flop, 
+you divide the number of ways to make a pair -> 78 
+by the total number of possible combinations -> 1,326:
+1 in 17, or 5.88%.
+ */
 #[derive(Debug, PartialEq, Clone, Parser)]
 pub enum Suit {
     Hearts,
@@ -30,22 +121,22 @@ impl Card {
     pub fn new(rank: &'static Rank, suit: &'static Suit) -> Card {
         Card { rank, suit }
     }
-    pub fn high_card_eval(self) -> u8 {
+    pub fn high_card_eval(self) -> f32 {
         // Assign points for high cards
         return match self.rank {
-            Rank::Two => 1,
-            Rank::Three => 2,
-            Rank::Four => 3,
-            Rank::Five => 4,
-            Rank::Six => 5,
-            Rank::Seven => 6,
-            Rank::Eight => 7,
-            Rank::Nine => 8,
-            Rank::Ten => 9,
-            Rank::Jack => 10,
-            Rank::Queen => 11,
-            Rank::King => 12,
-            Rank::Ace => 13,
+            Rank::Two => 1.0,
+            Rank::Three => 2.0,
+            Rank::Four => 3.0,
+            Rank::Five => 4.0,
+            Rank::Six => 5.5,
+            Rank::Seven => 6.5,
+            Rank::Eight => 7.5,
+            Rank::Nine => 8.5,
+            Rank::Ten => 10.0,
+            Rank::Jack => 11.0,
+            Rank::Queen => 14.0,
+            Rank::King => 16.0,
+            Rank::Ace => 18.0,
         }
     }
 }
@@ -53,6 +144,7 @@ impl Card {
 #[derive(Debug, Clone)]
 pub struct Deck {
     pub cards: Vec<Card>,
+    pub deck_count: usize,
     // ranks: &'a [Rank],
     // suits: &'a [Suit],
 }
@@ -76,37 +168,29 @@ impl Deck {
             Rank::King,
         ];
         let suits = &[Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades];
-        let mut cards = Vec::new();
+        let mut cards_vec = Vec::new();
         for suit in suits {
             for rank in ranks {
-                cards.push(Card::new(rank, suit));
+                cards_vec.push(Card::new(rank, suit));
             }
         }
-        Deck { cards }
-    }
-    #[allow(dead_code)]
-    fn get_suits() -> Vec<Suit> {
-        vec![Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades]
-    }
-    #[allow(dead_code)]
-    fn get_rank_list() -> Vec<Rank> {
-        vec![
-            Rank::Ace,
-            Rank::Two,
-            Rank::Three,
-            Rank::Four,
-            Rank::Five,
-            Rank::Six,
-            Rank::Seven,
-            Rank::Eight,
-            Rank::Nine,
-            Rank::Ten,
-            Rank::Jack,
-            Rank::Queen,
-            Rank::King,
-        ]
+        let count = cards_vec.len();
+        assert_eq!(count, 52);
+        Deck { 
+            cards: cards_vec,
+            deck_count: count, //this will mutate as the cards are dealt
+        }
     }
 
+    // shows the state of current deck
+    // after hands are dealt,
+    // before flop,
+    // after flop, 
+    // post turn / pre-river
+    pub fn check_current_deck(self) -> Vec<Card> {
+        println!("CARDS IN DECK: {:?} \n", self.cards.len());
+        self.cards
+    }
     pub fn shuffle(&mut self) {
         let mut rng = rand::thread_rng();
         for i in (1..self.cards.len()).rev() {
@@ -123,6 +207,29 @@ impl Deck {
             Some(result)
         }
     }
+
+    fn get_suits() -> Vec<Suit> {
+        vec![Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades]
+    }
+    // #[allow(dead_code)]
+    // fn get_rank_list() -> Vec<Rank> {
+    //     vec![
+    //         Rank::Ace,
+    //         Rank::Two,
+    //         Rank::Three,
+    //         Rank::Four,
+    //         Rank::Five,
+    //         Rank::Six,
+    //         Rank::Seven,
+    //         Rank::Eight,
+    //         Rank::Nine,
+    //         Rank::Ten,
+    //         Rank::Jack,
+    //         Rank::Queen,
+    //         Rank::King,
+    //     ]
+    // }
+
 }
 
 
@@ -132,7 +239,7 @@ pub struct Hand {
 }
 impl Hand {
     pub fn new(cards: Vec<Card>) -> Result<Self, HandError> {
-        if cards.len() > 3 {
+        if cards.len() > 7 {
             return Err(HandError::InvalidSize(cards.len()));
         }
         Ok(Self { cards })
@@ -152,56 +259,60 @@ impl Hand {
 }
 #[derive(Debug, Copy, Clone)]
 pub enum HandRank {
-    HighCard(u8),
-    Pair(u8),
-    TwoPair(u8),
-    ThreeOfAKind(u8),
-    Straight(u8),
-    Flush(u8),
-    FullHouse(u8),
-    FourOfAKind(u8),
-    StraightFlush(u8),
-    RoyalFlush(u8),
+    HighCard(f32),
+    Pair(f32),
+    TwoPair(f32),
+    ThreeOfAKind(f32),
+    Straight(f32),
+    Flush(f32),
+    FullHouse(f32),
+    FourOfAKind(f32),
+    StraightFlush(f32),
+    RoyalFlush(f32),
 }
 
 
-struct EvaluateHands {}
+struct EvaluateHands {
+
+}
 
 impl EvaluateHands {
     fn evaluate(hand: Option<Rc<RefCell<Hand>>>) -> Option<HandRank> {
-        let mut suited_bonus = 0;
+        let mut suited_bonus: f32 = 0.0;
+        let mut score = 0.0;
         if let Some(h) = hand {
             let x1 = h.borrow().cards[0];
             let x2 = h.borrow().cards[1];
 
             let pair_score = match (x1.rank, x2.rank) {
-                (Rank::Two, Rank::Two) => Some(2),
-                (Rank::Three, Rank::Three) => Some(4),
-                (Rank::Four, Rank::Four) => Some(6),
-                (Rank::Five, Rank::Five) => Some(8),
-                (Rank::Six, Rank::Six) => Some(10),
-                (Rank::Seven, Rank::Seven) => Some(12),
-                (Rank::Eight, Rank::Eight) => Some(14),
-                (Rank::Nine, Rank::Nine) => Some(16),
-                (Rank::Ten, Rank::Ten) => Some(18),
-                (Rank::Jack, Rank::Jack) => Some(20),
-                (Rank::Queen, Rank::Queen) => Some(22),
-                (Rank::King, Rank::King) => Some(24),
-                (Rank::Ace, Rank::Ace) => Some(26),
+                (Rank::Two, Rank::Two) => Some(2.0),
+                (Rank::Three, Rank::Three) => Some(4.0),
+                (Rank::Four, Rank::Four) => Some(6.0),
+                (Rank::Five, Rank::Five) => Some(8.0),
+                (Rank::Six, Rank::Six) => Some(10.0),
+                (Rank::Seven, Rank::Seven) => Some(12.0),
+                (Rank::Eight, Rank::Eight) => Some(14.0),
+                (Rank::Nine, Rank::Nine) => Some(16.0),
+                (Rank::Ten, Rank::Ten) => Some(18.0),
+                (Rank::Jack, Rank::Jack) => Some(20.0),
+                (Rank::Queen, Rank::Queen) => Some(22.0),
+                (Rank::King, Rank::King) => Some(24.0),
+                (Rank::Ace, Rank::Ace) => Some(26.0),
                 _ => None, // Skip any non-pair hand combos
             };
 
             if let Some(score) = pair_score {
                 // this will only be called if a pair exists
-                return Some(HandRank::Pair(score*100));
+                return Some(HandRank::Pair(score*100.0));
             } else {
                 // at this point we know we don't have a piar
                 let s1 = x1.high_card_eval();
                 let s2 = x2.high_card_eval();
                 if x1.suit == x2.suit {
-                    suited_bonus = 10;
+                    suited_bonus = 10.0;
                 }
-                Some(HandRank::HighCard(s1 + s2 + suited_bonus))
+                score = s1+s2+suited_bonus;
+                Some(HandRank::HighCard(score))
             }
         } 
         else {
@@ -225,6 +336,11 @@ pub enum HandError {
 
 use std::rc::{Rc};
 use core::cell::RefCell;
+
+// GAME STRUCT
+
+
+
 #[derive(Debug, Clone)]
 pub struct Player {
     pub name: Option<String>,
@@ -248,6 +364,19 @@ impl Player {
     pub fn add_hand(&mut self, h: Hand) {
         self.hand.replace(Rc::new(RefCell::new(h)));
     }
+    // experimental
+    pub fn update_hand(&mut self, h: Hand) {
+        let tmp = self.hand.clone();
+        if let Some(ref_hand) = tmp {
+            let mut mt = ref_hand.borrow().cards.clone();
+            for flop_card in h.cards {
+                mt.push(flop_card);
+            }
+            // essentially rebuild hand with flop added to it 
+            self.hand = Some(Rc::new(RefCell::new(Hand::new(mt).unwrap())));
+            
+        }
+    }
 }
 #[derive(Debug, Clone)]
 pub struct Game {
@@ -255,6 +384,7 @@ pub struct Game {
     pub player_ct: Option<usize>,
     pub players: Option<Vec<Player>>,
     pub table_cards: Option<Vec<Card>>,
+    pub hand_list: Option<Vec<Hand>>
 }
 impl Game {
     pub fn new() -> Self {
@@ -267,10 +397,12 @@ impl Game {
             player_ct: Some(n_players),
             players: Some(player_list),
             table_cards: None,
+            hand_list: None,
         }
     }
 
     pub fn show_players(self) {
+        println!("PLAYER COUNT: {:?} \n", self.player_ct);
         if let Some(ls) = self.players {
             for p in ls {
                 println!("\n");
