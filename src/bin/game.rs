@@ -9,35 +9,41 @@ fn setup_players(count: Option<u8>) -> Vec<Player> {
 
     if let Some(ct) = count {
         // define a specific amount of players 
-        for _ in 0..ct {
-            vp.push(Player::new("test".to_string()));
+        for idx in 0..ct {
+            vp.push(Player::new(format!("test_player{}", idx).to_string()));
         }
     } else {
         //default to 8 player table
-        for _ in 0..7 {
-            vp.push(Player::new("test".to_string()));
+        for idx in 0..7 {
+            vp.push(Player::new(format!("test_player{}", idx).to_string()));
         }
-
        
     }
     vp
 }
+/*
+Texas Hold'Em poker game simulator
+This program simulates poker games with up to 8 players, 
+using a lightweight implementation of the game rules. 
+
+TODO
+decision making process in CLI
+for both player and AI the decision framework should be modular
+
+wasm GUI
+
+ */
 fn main() -> Result<(), Box< dyn Error>> {
     // let hs = HandScore::new();
     // hs.display_point_values();
-    let player_group = setup_players(Some(3 as u8));
+    let player_group = setup_players(Some(3));
+
     // main logic encapsulated in Game struct
     let mut game_handler = GameMaster::new(Game::new(), player_group);
 
-    game_handler.play()?;
+    // game top level function
+    game_handler.init()?;
 
-    for p in game_handler.clone().gamestate.players.unwrap() {
-        println!("{:?}", p);
-    }
-    // let x = game_handler.gamestate.clone();
-    // x.show_players();
-    // x.deck.check_current_deck();
-    game_handler.update_game_status();
     Ok(())
 
 }

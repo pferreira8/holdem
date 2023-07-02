@@ -1,26 +1,77 @@
+use std::collections::HashMap;
 use std::error::Error;
+use std::rc::{Rc};
+use core::cell::RefCell;
+
 use rand::Rng;
 use clap::Parser;
 #[derive(Debug, Clone)]
+
+// there is a difference between the players field in this struct and the internal Game.players
+// by using a Hashmap to keep track of player turn and SB/BB chip updating through a key index
 pub struct GameMaster {
     pub gamestate: Game,
-    pub players: Vec<Player>
+    pub players: Vec<Player>,
+    pub small_blind: Option<i32>,
+    pub big_blind: Option<i32>,
+    pub bb_position: usize,
+    pub player_log: Vec<PlayerDecisions>,
+    pub turn_index: usize,
+    pub active_player_count: usize,
 }
 impl GameMaster {
     pub fn new(g: Game, vp: Vec<Player>) -> Self {
+
+        let mut table_layout: HashMap<usize, Player> = HashMap::new();
+        for (index, p) in vp.clone().iter().enumerate() {
+            table_layout.insert(index, p.clone());
+        }
+
+        let player_log: Vec<PlayerDecisions> = Vec::new();
+        let size = vp.len();
         Self {
             gamestate: g,
             players: vp,
+            small_blind: Some(10),
+            big_blind: Some(20),
+            bb_position: 1,
+            player_log: player_log,
+            turn_index: 2,
+            active_player_count: size
+
         }
     }
-    pub fn play(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn init(&mut self) -> Result<(), Box<dyn Error>> {
+        self.initial_blinds()?;
+        
         self.initial_deal()?;
+
+        self.start_turn()?;
+
+
+        while self.player_log.len() < self.active_player_count {
+            // appends to player log, which will eventually equal the amount of active players to 
+            self.decision_event();
+        }
+        // self.decision_event();
         self.deal_flop()?;
+
+ 
+        // passing internal state to the GameMaster.players field
+        // adds flop hands to players cards in a Vec for determining who has the best hand
+        self.update_game_status();
+
+
+        // begin inner loop of player decisions
+
+        // HAND OVER 
         Ok(())
     }
+
     pub fn update_game_status(&mut self) {
         println!("TABLE CARDS: {:?} \n ", self.gamestate.table_cards);
         if let Some(players_state) = self.gamestate.players.clone() {
+            // copying the players from an internal state to a global state
             self.players = players_state;
         }
 
@@ -29,8 +80,23 @@ impl GameMaster {
         }
     }
     // INTERNAL FUNCTIONS
+
+    fn start_turn(&mut self) -> Result<(), Box<dyn Error>> {
+        assert_eq!(self.turn_index, self.bb_position+1);
+
+        let first_to_act = self.players.get_mut(self.turn_index);
+        if let Some(first) = first_to_act {
+            first.is_turn = true;
+        }
+        Ok(())
+    }
+
+    fn pass_turn(&mut self) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+
     fn initial_deal(&mut self) -> Result<(), Box<dyn Error>> {
-        
+        // DEAL OUT PLAYER HANDS
         for mut p in self.players.clone() {
             let rng_hand = self.gamestate.deck.deal(2).map(|cards| Hand::new(cards));
 
@@ -51,9 +117,22 @@ impl GameMaster {
         }
         Ok(())
     }
+    fn initial_blinds(&mut self) -> Result<(), Box<dyn Error>> {
+        let bb = self.players.get_mut(self.bb_position);
+        if let Some(first_big) = bb {
+            first_big.chips -= self.big_blind.expect("BIG BLIND NOT FOUND");
+        }
+        let sb = self.players.get_mut(self.bb_position-1);
+        if let Some(first_small) = sb {
+            first_small.chips -= self.small_blind.expect("SMALL BLIND NOT FOUND");
+        }
+        Ok(())
+
+    }
     fn deal_flop(&mut self) -> Result<(), Box<dyn Error>> {
-        // burn a card 
+        // burn a card
         let _ = &self.gamestate.deck.deal(1); // does not need to be assigned to a hand like below
+
         let flop = self.gamestate.deck.deal(3).map(|cards| Hand::new(cards));
         
         // ADD FLOP TO GAME OBJECT
@@ -84,8 +163,38 @@ impl GameMaster {
         }
         Ok(())
     }
+
+    fn decision_event(&mut self) {
+
+    }
+}
+#[derive(Debug, Clone)]
+pub struct DecisionHandler {
+
 }
 
+#[derive(Debug, Clone)]
+pub enum PlayerDecisions {
+    Call,
+    Bet,
+    Raise,
+    Shove,
+    Check,
+    Fold
+}
+
+impl PlayerDecisions {
+    fn get_all_options() -> Vec<PlayerDecisions> {
+        vec![
+            PlayerDecisions::Call,
+            PlayerDecisions::Bet,
+            PlayerDecisions::Check,
+            PlayerDecisions::Raise,
+            PlayerDecisions::Shove,
+            PlayerDecisions::Fold
+        ]
+    }
+}
 /*
 
 To calculate the probability of 
@@ -334,8 +443,7 @@ pub enum HandError {
     InvalidSize(usize),
 }
 
-use std::rc::{Rc};
-use core::cell::RefCell;
+
 
 // GAME STRUCT
 
@@ -345,16 +453,18 @@ use core::cell::RefCell;
 pub struct Player {
     pub name: Option<String>,
     pub hand: Option<Rc<RefCell<Hand>>>,
-    pub chips: Option<u16>,
+    pub chips: i32,
     pub hand_value: Option<HandRank>,
+    pub is_turn: bool,
 }
 impl Player {
     pub fn new(name: String) -> Self {
         Self {
             name: Some(name),
             hand: None,
-            chips: None,
+            chips: 0,
             hand_value: None,
+            is_turn: false
         }
 
     }

@@ -113,7 +113,7 @@ impl fmt::Display for MonteCarloPairDistribution {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
-            "2️⃣: {}/{}\n3️⃣: {}/{}\n4️⃣: {}/{}\n5️⃣: {}/{}\n6️⃣: {}/{}\n7️⃣: {}/{}\n8️⃣: {}/{}\n9️⃣: {}/{}\n🔟: {}/{}\n👑: {}/{}\n👸: {}/{}\n🃏: {}/{}\n🅰️: {}/{}",
+            "TWOS: {}/{}\n THREES: {}/{}\n FOURS: {}/{}\n FIVES: {}/{}\n SIXES: {}/{}\n SEVENS: {}/{}\n EIGHTS: {}/{}\n NINES: {}/{}\n TENS: {}/{}\n JACKS: {}/{}\n QUEENS: {}/{}\n KINGS: {}/{}\n ACES: {}/{}",
             self.deuces, self.total_hands, self.threes, self.total_hands, self.fours, self.total_hands, self.fives, self.total_hands, self.sixes, self.total_hands, self.sevens, self.total_hands, self.eights, self.total_hands, self.nines, self.total_hands, self.tens, self.total_hands, self.kings, self.total_hands, self.queens, self.total_hands, self.jacks, self.total_hands, self.aces, self.total_hands
         )
     }
