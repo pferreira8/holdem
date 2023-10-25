@@ -1,36 +1,35 @@
-# Texas-Hold'em Draw Simulator
-This is a work-in-progress. Currently, it runs a Monte-Carlo simulation to showcase the pair distribution. This project is primarily for me to understand the variance impact of # of hands dealt in a simulation.
-
-You can pass the number of simulations you wish to perform as a command-line argument or in the main function.
+# Texas-Hold'em Project
+GUI/eval-engine port/ is a major work in progress. So far this is the scaffolding of a free platform to play poker against AI.
+Long term vision:
+    enabling server-hosting
+    smart contract vesting for buy-ins and payouts on Solana
+    
+## Monte-Carlo Args
+You can pass the number of simulations you wish to perform as a command-line argument or override the default args.
 
 To make running custom sims easier, you can throw them in a bash script to run the program:
 ```
-file-example name holdem.sh
-cargo build --release && cargo run --release -- -n 1000 -r 5
+command example | ex. script -> holdem.sh
+cargo build --release && cargo run --release --bin holdem -- -n 1000 -r 5
 
-execute holdem.sh in bash shell
-sh holdem.sh
 ```
 
-## Args
+### Args
+```
 -n -> number of simulations to run  
 (default value: 1,000,000)
 
 
 -r -> repeat a specified simulation an arbitrary number of times 
 (default value: 0)
-                    
+```                    
 ### Last Benchmark: 
-it takes ~87ms to evaluate a pair distribution of one million dealt hands.
+~87ms process 1 million hands.
 
 ### To-Do
-Build a dealer class that manages state for each simulation and encapsulate the logic within that.
-Add the option to select a predetermined hand and then evaluate its occurrence over n hands dealt.
-Create a full game simulator that doesn't factor in betting. It takes a parameter 'x' for the number of players and proceeds to deal hands and evaluate hand rank preflop and also on each street determine winning odds of hand at all stages of the game, including dead cards. Track results via a dictionary approach (player #, tuple(bool-> winning hand?, hand)).
+Add the option to select a predetermined hand and then count its occurrence over n hands dealt.
 
-### Process Logic
-The simulator deals to players (pop 2n+1) cards from the deck to account for player cards 2(n), plus an initial burn card.
+#### Process Logic
+The simulator deals to n players, removing 2n+1 cards from the deck to account for player cards, plus the initial burn card.
 
-Community cards are split into flop, turn, and river and are stored in separate Vec variables. The following sequence is encapsulated into a function that modifies the Deck variable: pop burn-card, push flop, pop burn, push turn, pop burn, push river.
 
-The flop, turn, and river are then joined through Vec.
