@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::error::Error;
 use std::rc::{Rc};
@@ -41,7 +42,7 @@ impl GameMaster {
 
         }
     }
-    pub fn init(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn init(&mut self) -> Result<Self, Box<dyn Error>> {
         self.initial_blinds()?;
         
         self.initial_deal()?;
@@ -49,10 +50,10 @@ impl GameMaster {
         self.start_turn()?;
 
 
-        while self.player_log.len() < self.active_player_count {
-            // appends to player log, which will eventually equal the amount of active players to 
-            self.decision_event();
-        }
+        // while self.player_log.len() < self.active_player_count {
+        //     // appends to player log, which will eventually equal the amount of active players to 
+        //     self.decision_event();
+        // }
         // self.decision_event();
         self.deal_flop()?;
 
@@ -65,7 +66,7 @@ impl GameMaster {
         // begin inner loop of player decisions
 
         // HAND OVER 
-        Ok(())
+        Ok(self.to_owned())
     }
 
     pub fn update_game_status(&mut self) {
@@ -140,15 +141,15 @@ impl GameMaster {
             match h {
                 Ok(h) => {
                     self.gamestate.table_cards = Some(h.clone().cards);
-
-                    if let Some(updated_players) = self.gamestate.players.as_mut() {
-                        for p in updated_players {
-                            p.update_hand(h.clone());
-                            // eval is broken at this stage
-                            // need an update_eval type function
-                            p.eval_hand();
-                        }
-                    }
+                    // COMMENT TOGGLE THIS CODE TO ADD TABLE CARDS INTO PLAYER HAND (FOR EVAL LOGIC)
+                    // if let Some(updated_players) = self.gamestate.players.as_mut() {
+                    //     for p in updated_players {
+                    //         p.update_hand(h.clone());
+                    //         // eval is broken at this stage
+                    //         // need an update_eval type function
+                    //         p.eval_hand();
+                    //     }
+                    // }
                     // EXPERIMENTAL CODE ABOVE
                     // COPYING FLOP CARDS INTO EACH PLAYERS HAND
                     // THIS WILL MAKE IT EASIER TO LOOP
@@ -483,9 +484,45 @@ impl Player {
                 mt.push(flop_card);
             }
             // essentially rebuild hand with flop added to it 
+            
             self.hand = Some(Rc::new(RefCell::new(Hand::new(mt).unwrap())));
             
         }
+    }
+
+    pub fn get_cards_svg(self) -> Vec<String> {
+        let mut card_file_paths: Vec<String> = Vec::new();
+        if let Some(h) = self.hand.clone() {
+            let cards = h.borrow().cards.clone();
+            
+            for c in cards {
+                let rank_char = match c.rank {
+                    Rank::Ace => "A",
+                    Rank::King => "K", 
+                    Rank::Queen => "Q",
+                    Rank::Jack => "J",
+                    Rank::Ten => "T",
+                    Rank::Nine => "9",
+                    Rank::Eight => "8",
+                    Rank::Seven => "7",
+                    Rank::Six => "6",
+                    Rank::Five => "5",
+                    Rank::Four => "4",
+                    Rank::Three => "3",
+                    Rank::Two => "2"
+                };
+                let suit_char = match c.suit {
+                    Suit::Clubs => "C",
+                    Suit::Diamonds => "D",
+                    Suit::Hearts => "H",
+                    Suit::Spades => "S"
+                };
+                card_file_paths.push(rank_char.to_owned()+suit_char+".svg");
+            }
+        }
+        
+        card_file_paths
+
     }
 }
 #[derive(Debug, Clone)]

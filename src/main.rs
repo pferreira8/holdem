@@ -41,30 +41,6 @@ fn track_runtime(pass_start: Instant) {
     println!("Time elapsed: {:?}", duration);
 }
 
-// IMPLEMENT CODE FROM bin/game.rs
-// fn run_game_sim() {
-//     let g = Game::new();
-//     let mut deck = Box::new(Deck::new());
-//     // let mut pair_tracker = 0;
-//     // let mut suit_tracker = 0;
-//     // let mut rockets = 0;
-//     for _ in 0..g.player_ct.unwrap() {
-//         let rng_hand = deck.deal(2).map(|cards| Hand::new(cards));
-//         // error handler to use a new deck
-//         if deck.cards.is_empty() {
-//             deck = Box::new(Deck::new());
-//             deck.shuffle();
-//         }
-//         match rng_hand {
-//             Some(Ok(sim_hand)) => {
-
-//             }
-//             _ => println!("No hand dealt"),
-//         }
-//     } // END FOR LOOP
-// }
-
-
 // simulator eval logic takes MonteCarloPairDistribution::default() as input
 // and increments the sim pair results array through a match block
 fn track_simulation_pairs(

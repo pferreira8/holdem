@@ -1,5 +1,5 @@
 use holdem::{HandScore, Game, Player, Hand, GameMaster};
-use std::{error::Error};
+use std::error::Error;
 
 
 fn setup_players(count: Option<u8>) -> Vec<Player> {
