@@ -16,12 +16,12 @@ cargo build --release && cargo run --release --bin holdem -- -n 1000 -r 5
 
 ### Args
 ```
--n -> number of simulations to run  
+/* 
+-n -> number of hands to deal per simulation.  
 (default value: 1,000,000)
-
-
--r -> repeat a specified simulation an arbitrary number of times 
-(default value: 0)
+-r -> how many simulations you want to run. 
+(default value: 1)
+*/
 ```                    
 ### Last Benchmark: 
 ~87ms process 1 million hands.
