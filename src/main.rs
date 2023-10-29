@@ -21,7 +21,7 @@ fn main() {
     // optional sims comes from the -r flag = "repeat"
     let optional_sims: u32 = args.repeat_n_sims;
     // run one simulation
-    if optional_sims.clone() == 0 {
+    if optional_sims == 1 {
         simulation_builder(args.num_simulations);
     // optional arg -r was passed to repeat a custom simulation 'n' times
     } else {
@@ -67,7 +67,7 @@ fn track_simulation_pairs(
     return pair_distribution;
 }
 //STRUCT AND IMPL LOGIC
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 //Default value of usize is 0
 struct MonteCarloPairDistribution {
     total_hands: u32,
@@ -105,6 +105,7 @@ fn simulation_builder(n_sims: u32) {
     // let mut pair_tracker = 0;
     // let mut suit_tracker = 0;
     // let mut rockets = 0;
+
     for _ in 0..n_sims {
         let rng_hand = deck.deal(2).map(|cards| Hand::new(cards));
         // error handler to use a new deck
@@ -120,7 +121,12 @@ fn simulation_builder(n_sims: u32) {
         }
     } // END FOR LOOP
 
+
+    
     //RETURN PAIR TRACKER STRUCT
     println!("randomized hands dealt: \n {}", n_sims);
-    println!("pair distribution \n {}", pair_tracker);
+    println!("pair distribution \n {}", &pair_tracker);
+
+
+
 }

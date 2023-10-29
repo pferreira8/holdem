@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use holdem::{HandScore, Game, Player, Hand, GameMaster};
 use std::error::Error;
 

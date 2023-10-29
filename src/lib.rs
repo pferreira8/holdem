@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::error::Error;
-use std::rc::{Rc};
+use std::rc::Rc;
 use core::cell::RefCell;
 
 use rand::Rng;
@@ -57,7 +57,8 @@ impl GameMaster {
         // self.decision_event();
         self.deal_flop()?;
 
- 
+        // self.deal_turn_or_river()?;
+        // self.deal_turn_or_river()?;
         // passing internal state to the GameMaster.players field
         // adds flop hands to players cards in a Vec for determining who has the best hand
         self.update_game_status();
@@ -165,6 +166,29 @@ impl GameMaster {
         Ok(())
     }
 
+    pub fn deal_turn_or_river(&mut self) -> Result<(), Box<dyn Error>> {
+        //burn card
+        let _ = &self.gamestate.deck.deal(1);
+        let turn = self.gamestate.deck.deal(1).map(|cards| Hand::new(cards));
+        
+        // ADD FLOP TO GAME OBJECT
+        if let Some(h) = turn {
+            match h {
+                Ok(h) => {
+                    if let Some(card_vec) = self.gamestate.table_cards.borrow_mut() {
+                        for c in h.cards {
+                            card_vec.push(c.to_owned());
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("{:?}", err);
+                }
+            }
+        }
+
+        Ok(())
+    }
     fn decision_event(&mut self) {
 
     }
@@ -480,8 +504,8 @@ impl Player {
         let tmp = self.hand.clone();
         if let Some(ref_hand) = tmp {
             let mut mt = ref_hand.borrow().cards.clone();
-            for flop_card in h.cards {
-                mt.push(flop_card);
+            for table_card in h.cards {
+                mt.push(table_card);
             }
             // essentially rebuild hand with flop added to it 
             
@@ -565,7 +589,38 @@ impl Game {
     }
     // LATER
     // pub fn winning_hand(self) {}
+    pub fn select_cards_svg(cards: Vec<Card>) -> Vec<String> {
+        let mut card_file_paths: Vec<String> = Vec::new();
 
+        for c in cards {
+            let rank_char = match c.rank {
+                Rank::Ace => "A",
+                Rank::King => "K", 
+                Rank::Queen => "Q",
+                Rank::Jack => "J",
+                Rank::Ten => "T",
+                Rank::Nine => "9",
+                Rank::Eight => "8",
+                Rank::Seven => "7",
+                Rank::Six => "6",
+                Rank::Five => "5",
+                Rank::Four => "4",
+                Rank::Three => "3",
+                Rank::Two => "2"
+            };
+            let suit_char = match c.suit {
+                Suit::Clubs => "C",
+                Suit::Diamonds => "D",
+                Suit::Hearts => "H",
+                Suit::Spades => "S"
+            };
+            card_file_paths.push(rank_char.to_owned()+suit_char+".svg");
+        }
+        
+        
+        card_file_paths
+
+    }
     pub fn get_player(self, name: &str) -> Option<Player> {
         for p in self.players.unwrap() {
             if p.name == Some(name.to_string()) {
