@@ -1,13 +1,9 @@
-use std::borrow::BorrowMut;
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use iced::theme::Container;
-use iced::{ContentFit, Renderer, Theme};
+use std::collections::HashMap;
+use iced::{ContentFit, Renderer};
 use iced::widget::{checkbox, column, container, Svg, svg, row, Row, button, Checkbox, Button};
 use iced::{Element, Length, Sandbox, Settings};
 #[allow(unused_imports)]
-use holdem::{HandScore, Game, Player, Hand, GameMaster};
+use holdem::{Game, Player, Hand, GameMaster};
 use iced_winit::core::svg::Handle;
 
 
@@ -38,7 +34,9 @@ pub fn main() -> iced::Result {
 
 #[derive(Debug)]
 struct CardVisualizer {
+    // users hand
     card_files: Vec<String>,
+    player_hands: HashMap<Option<String>, Vec<String>>,
     table_card_files: Vec<String>,
     game_over: bool,
     game_state: GameMaster,
@@ -47,7 +45,7 @@ struct CardVisualizer {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Message {
-    NewHandAlert(bool),
+    StartNewHand(bool),
     CardDealt(bool)
 }
 
@@ -64,11 +62,21 @@ impl Sandbox for CardVisualizer {
         game_handler.init().unwrap();
         let g_copy = game_handler.clone();
         //need to clone above because we are getting player
-        let hero = game_handler.gamestate.get_player("phil").unwrap();
-        let card_files = hero.get_cards_svg();
+        //TEST
+        let mut player_cards: HashMap<Option<String>, Vec<String>> = HashMap::new();
+        if let Some(players) =  game_handler.gamestate.players {
+            for p in players {
+                player_cards.insert(p.clone().name, p.get_cards_svg());
+            }
+
+        }
+        //END TEST
+        let hero = player_cards.get(&Some("phil".to_string())).unwrap();
+        let card_files = hero;
         println!("hero cards: {:?}", card_files);
         CardVisualizer { 
-            card_files: card_files, 
+            card_files: card_files.to_vec(), 
+            player_hands: player_cards,
             table_card_files: Vec::with_capacity(5),
             game_over: false,
             game_state: g_copy,
@@ -83,15 +91,13 @@ impl Sandbox for CardVisualizer {
 
     fn update(&mut self, message: Self::Message) {
         match message {
-            Message::NewHandAlert(starting_next_game) => {
+            Message::StartNewHand(starting_next_game) => {
                 self.game_over = starting_next_game;
                 
                 self.game_state = GameMaster::new(Game::new(), self.game_state.clone().players);
                 self.game_state.init().unwrap();
                 let hero = self.game_state.clone().gamestate.get_player("phil").unwrap();
-                
-                // let mut v: Vec<String> = Vec::new();
-                // self.card_files.clear();
+
                 self.card_files = hero.get_cards_svg();
                 println!("UPDATED: {:?}", self.card_files);
                 // self.card_files = v;
@@ -112,7 +118,11 @@ impl Sandbox for CardVisualizer {
         if let Some(tbl_cards) = self.game_state.gamestate.table_cards.clone() {
             table_svg = Game::select_cards_svg(tbl_cards);
         } 
-        container_builder(self.card_files.clone(), table_svg)
+        let mut v: Vec<Vec<String>> = Vec::new();
+        for h in self.player_hands.clone().values() {
+            v.push(h.to_owned());
+        }
+        container_builder(self.card_files.clone(), v, table_svg)
         
 
 
@@ -129,13 +139,28 @@ fn svg_path_setup(card_file: String) -> Svg {
 
     svg(generate_handle).content_fit(ContentFit::ScaleDown)
 }
+//Vec<(Svg, Svg)>
+fn add_player_hands(hand_group: Vec<Vec<String>>) -> Vec<(Svg, Svg)> {
+    let mut card_images: Vec<(Svg, Svg)> = Vec::new();
+    for hand in hand_group {
+        if let (Some(c1), Some(c2)) = (hand.get(0), hand.get(1)) {
+            let cimg1: Svg = Svg::new(Handle::from_path(c1));
+            let cimg2: Svg = Svg::new(Handle::from_path(c2));
+            card_images.push((cimg1, cimg2));
+        }
+    }
 
-fn container_builder(player_hand: Vec<String>, table_cards: Vec<String>) -> Element<'static, Message> {
+    
+    
+
+    return card_images
+}
+fn container_builder(player_hand: Vec<String>, group_cards: Vec<Vec<String>>, table_cards: Vec<String>) -> Element<'static, Message> {
     // functions triggered through Messages
     let start_next_game: Checkbox<'static, Message, Renderer> = checkbox(
         "Click For New Hand",
         false,
-        Message::NewHandAlert,
+        Message::StartNewHand,
     );
 
     let deal_turn_or_river: Button<'static, Message, Renderer> = button(
@@ -172,6 +197,14 @@ fn container_builder(player_hand: Vec<String>, table_cards: Vec<String>) -> Elem
         t5 = svg_path_setup(_card5.unwrap_or(&"".to_string()).to_owned());
     }  
 
+    let row_player_cards = add_player_hands(group_cards);
+    let mut player_displayed_cards: Row<'_, Message, Renderer> = Row::new();
+    for p in row_player_cards {
+        player_displayed_cards = row![
+            p.0,
+            p.1
+        ]
+    }
     let tr: Row<'_, Message, Renderer> = match table_cards.len() {
         3 => {
             row![
@@ -189,7 +222,7 @@ fn container_builder(player_hand: Vec<String>, table_cards: Vec<String>) -> Elem
             ]
         }
         _ => {
-            row![]
+            row![t1, t2, t3, t4, t5]
         }
     };
     container(
@@ -199,6 +232,7 @@ fn container_builder(player_hand: Vec<String>, table_cards: Vec<String>) -> Elem
                 p1,
                 p2
             ].padding(20), 
+            player_displayed_cards,
             container(start_next_game).width(Length::Fill).height(Length::Fill).center_x(),
             container(deal_turn_or_river).width(Length::Fill).height(Length::Fill).center_x()
         ],

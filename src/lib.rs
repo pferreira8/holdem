@@ -4,8 +4,14 @@ use std::error::Error;
 use std::rc::Rc;
 use core::cell::RefCell;
 
+use aya_poker::base::ParseError;
 use rand::Rng;
 use clap::Parser;
+use aya_poker::base::Hand as AyaHand;
+use aya_poker::base::Card as AyaCard;
+pub mod aya;
+use aya::equity_calculator;
+
 #[derive(Debug, Clone)]
 
 // there is a difference between the players field in this struct and the internal Game.players
@@ -93,23 +99,18 @@ impl GameMaster {
         Ok(())
     }
 
-    fn pass_turn(&mut self) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
 
     fn initial_deal(&mut self) -> Result<(), Box<dyn Error>> {
         // DEAL OUT PLAYER HANDS
-        for mut p in self.players.clone() {
+        for p in &mut self.players {
             let rng_hand = self.gamestate.deck.deal(2).map(|cards| Hand::new(cards));
 
             if let Some(h) = rng_hand {
                 match h {
                     Ok(h) => {
                         p.add_hand(h);
-                        // eval hand assigns the initial score attribute to each Player
-                        p.eval_hand();
 
-                        self.gamestate.add_player(p)?;
+                        self.gamestate.add_player(p.clone())?;
                     }
                     Err(err) => {
                         eprintln!("{:?}", err);
@@ -142,21 +143,22 @@ impl GameMaster {
             match h {
                 Ok(h) => {
                     self.gamestate.table_cards = Some(h.clone().cards);
-                    // COMMENT TOGGLE THIS CODE TO ADD TABLE CARDS INTO PLAYER HAND (FOR EVAL LOGIC)
-                    // if let Some(updated_players) = self.gamestate.players.as_mut() {
-                    //     for p in updated_players {
-                    //         p.update_hand(h.clone());
-                    //         // eval is broken at this stage
-                    //         // need an update_eval type function
-                    //         p.eval_hand();
-                    //     }
-                    // }
-                    // EXPERIMENTAL CODE ABOVE
-                    // COPYING FLOP CARDS INTO EACH PLAYERS HAND
-                    // THIS WILL MAKE IT EASIER TO LOOP
-                    // AND DO A MAXIMIZING FUNCTION 
-                    // THIS SHIT BROKE RN
-                    // REPLACES HAND WITH FLOP CARDS
+                    let p = self.players[0].clone().hand.unwrap();
+                    let o = self.players[1].clone().hand.unwrap();
+
+                    let equity = equity_calculator(
+                        &p.to_aya_sim().unwrap(), 
+                        &o.to_aya_sim().unwrap(),
+                        &h.to_aya_sim().unwrap()
+                    );
+
+                    println!(
+                        "{} has {:.1}% equity on {:?} against {}.",
+                        p.to_string(),
+                        100.0 * equity,
+                        h.cards,
+                        o.to_string()
+                    );
                 }
                 Err(err) => {
                     eprintln!("{:?}", err);
@@ -209,7 +211,7 @@ pub enum PlayerDecisions {
 }
 
 impl PlayerDecisions {
-    fn get_all_options() -> Vec<PlayerDecisions> {
+    fn _get_all_options() -> Vec<PlayerDecisions> {
         vec![
             PlayerDecisions::Call,
             PlayerDecisions::Bet,
@@ -228,24 +230,8 @@ you divide the number of ways to make a pair -> 78
 by the total number of possible combinations -> 1,326:
 1 in 17, or 5.88%.
  */
-#[derive(Debug, PartialEq, Clone, Parser)]
-pub enum Suit {
-    Hearts,
-    Diamonds,
-    Clubs,
-    Spades,
-}
-impl Suit {
-    #[allow(dead_code)]
-    fn randomize_suit() -> Suit {
-        let mut suit_rng = rand::thread_rng();
-        let suits = Deck::get_suits();
-        let rand_suit = suit_rng.gen_range(0..suits.len());
-        suits.get(rand_suit).unwrap().to_owned()
-    }
-}
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Card {
     pub rank: &'static Rank,
     pub suit: &'static Suit,
@@ -255,24 +241,11 @@ impl Card {
     pub fn new(rank: &'static Rank, suit: &'static Suit) -> Card {
         Card { rank, suit }
     }
-    pub fn high_card_eval(self) -> f32 {
-        // Assign points for high cards
-        return match self.rank {
-            Rank::Two => 1.0,
-            Rank::Three => 2.0,
-            Rank::Four => 3.0,
-            Rank::Five => 4.0,
-            Rank::Six => 5.5,
-            Rank::Seven => 6.5,
-            Rank::Eight => 7.5,
-            Rank::Nine => 8.5,
-            Rank::Ten => 10.0,
-            Rank::Jack => 11.0,
-            Rank::Queen => 14.0,
-            Rank::King => 16.0,
-            Rank::Ace => 18.0,
-        }
+
+    pub fn as_string(&self) -> String {
+        format!("{}{}", self.rank.to_string(), self.suit.to_string())
     }
+
 }
 
 #[derive(Debug, Clone)]
@@ -345,24 +318,6 @@ impl Deck {
     fn get_suits() -> Vec<Suit> {
         vec![Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades]
     }
-    // #[allow(dead_code)]
-    // fn get_rank_list() -> Vec<Rank> {
-    //     vec![
-    //         Rank::Ace,
-    //         Rank::Two,
-    //         Rank::Three,
-    //         Rank::Four,
-    //         Rank::Five,
-    //         Rank::Six,
-    //         Rank::Seven,
-    //         Rank::Eight,
-    //         Rank::Nine,
-    //         Rank::Ten,
-    //         Rank::Jack,
-    //         Rank::Queen,
-    //         Rank::King,
-    //     ]
-    // }
 
 }
 
@@ -378,89 +333,24 @@ impl Hand {
         }
         Ok(Self { cards })
     }
-    fn paired_hand(&self) -> bool {
+    fn _paired_hand(&self) -> bool {
         self.cards[0].rank == self.cards[1].rank
     }
-    // fn int_val(&self) -> f64 {
-    //     1.5
-    // }
-    // fn suited_hand(&self) -> bool {
-    //     self.cards[0].suit == self.cards[1].suit
-    // }
-    // fn got_aces(&self) -> bool {
-    //     self.cards[0].rank.eq(&Rank::Ace) && self.cards[1].rank.eq(&Rank::Ace)
-    // }
-}
-#[derive(Debug, Copy, Clone)]
-pub enum HandRank {
-    HighCard(f32),
-    Pair(f32),
-    TwoPair(f32),
-    ThreeOfAKind(f32),
-    Straight(f32),
-    Flush(f32),
-    FullHouse(f32),
-    FourOfAKind(f32),
-    StraightFlush(f32),
-    RoyalFlush(f32),
-}
 
-
-struct EvaluateHands {
-
-}
-
-impl EvaluateHands {
-    fn evaluate(hand: Option<Rc<RefCell<Hand>>>) -> Option<HandRank> {
-        let mut suited_bonus: f32 = 0.0;
-        let mut score = 0.0;
-        if let Some(h) = hand {
-            let x1 = h.borrow().cards[0];
-            let x2 = h.borrow().cards[1];
-
-            let pair_score = match (x1.rank, x2.rank) {
-                (Rank::Two, Rank::Two) => Some(2.0),
-                (Rank::Three, Rank::Three) => Some(4.0),
-                (Rank::Four, Rank::Four) => Some(6.0),
-                (Rank::Five, Rank::Five) => Some(8.0),
-                (Rank::Six, Rank::Six) => Some(10.0),
-                (Rank::Seven, Rank::Seven) => Some(12.0),
-                (Rank::Eight, Rank::Eight) => Some(14.0),
-                (Rank::Nine, Rank::Nine) => Some(16.0),
-                (Rank::Ten, Rank::Ten) => Some(18.0),
-                (Rank::Jack, Rank::Jack) => Some(20.0),
-                (Rank::Queen, Rank::Queen) => Some(22.0),
-                (Rank::King, Rank::King) => Some(24.0),
-                (Rank::Ace, Rank::Ace) => Some(26.0),
-                _ => None, // Skip any non-pair hand combos
-            };
-
-            if let Some(score) = pair_score {
-                // this will only be called if a pair exists
-                return Some(HandRank::Pair(score*100.0));
-            } else {
-                // at this point we know we don't have a piar
-                let s1 = x1.high_card_eval();
-                let s2 = x2.high_card_eval();
-                if x1.suit == x2.suit {
-                    suited_bonus = 10.0;
-                }
-                score = s1+s2+suited_bonus;
-                Some(HandRank::HighCard(score))
-            }
-        } 
-        else {
-            // should not reach this 
-            // if so, option was not accessed properly.
-            None
-        }
-
-
+    pub fn to_string(&self) -> String {
+        self.cards
+            .iter()
+            .map(|card| format!("{}{}", card.rank.to_string(), card.suit.to_string()))
+            .collect::<Vec<String>>()
+            .join(" ")
     }
-
-
+    
+    pub fn to_aya_sim(&self) -> Result<AyaHand, ParseError> {
+        self.cards.iter()
+            .map(|c| c.as_string().parse::<AyaCard>())
+            .collect::<Result<AyaHand, ParseError>>()
+    }
 }
-
 
 
 #[derive(Debug)]
@@ -477,9 +367,9 @@ pub enum HandError {
 #[derive(Debug, Clone)]
 pub struct Player {
     pub name: Option<String>,
-    pub hand: Option<Rc<RefCell<Hand>>>,
+    pub hand: Option<Hand>,
     pub chips: i32,
-    pub hand_value: Option<HandRank>,
+    pub hand_equity: f64,
     pub is_turn: bool,
 }
 impl Player {
@@ -488,28 +378,28 @@ impl Player {
             name: Some(name),
             hand: None,
             chips: 0,
-            hand_value: None,
+            hand_equity: 0.0,
             is_turn: false
         }
 
     }
-    pub fn eval_hand(&mut self) {
-        self.hand_value = EvaluateHands::evaluate(self.hand.clone()) ;
-    }
+
     pub fn add_hand(&mut self, h: Hand) {
-        self.hand.replace(Rc::new(RefCell::new(h)));
+        // self.hand.replace(Rc::new(RefCell::new(h)));
+        self.hand.replace(h);
     }
     // experimental
     pub fn update_hand(&mut self, h: Hand) {
         let tmp = self.hand.clone();
         if let Some(ref_hand) = tmp {
-            let mut mt = ref_hand.borrow().cards.clone();
+            let mut mt = ref_hand.cards.clone();
             for table_card in h.cards {
                 mt.push(table_card);
             }
             // essentially rebuild hand with flop added to it 
             
-            self.hand = Some(Rc::new(RefCell::new(Hand::new(mt).unwrap())));
+            // self.hand = Some(Rc::new(RefCell::new(Hand::new(mt).unwrap())));
+            self.hand = Some(Hand::new(mt).unwrap());
             
         }
     }
@@ -517,7 +407,7 @@ impl Player {
     pub fn get_cards_svg(self) -> Vec<String> {
         let mut card_file_paths: Vec<String> = Vec::new();
         if let Some(h) = self.hand.clone() {
-            let cards = h.borrow().cards.clone();
+            let cards = h.cards.clone();
             
             for c in cards {
                 let rank_char = match c.rank {
@@ -578,8 +468,8 @@ impl Game {
             for p in ls {
                 println!("\n");
                 println!("PLAYER NAME:  {:?}", p.name.expect("issue accessing player data"));
-                println!("CARDS:        {:?}", p.hand.expect("issue accessing player data").borrow());
-                println!("HAND VALUE:   {:?}", p.hand_value.expect("issue accessing player data"));
+                println!("CARDS:        {:?}", p.hand.expect("issue accessing player data"));
+                println!("HAND EQUITY VALUE:   {:?}", p.hand_equity);
                 println!("CHIP VALUE:   {:?}", p.chips);
                 println!("\n");
             }
@@ -637,14 +527,30 @@ impl Game {
             Err("Players vector not initialized".into())
         }
     }
-    //pseudo code 
-    // evaluate(player.get.hand)
-    // return ordered ranking of player hands
+
 }
 
-// pub struct HandEvaluator {
-//     hand: Hand
-// }
+
+
+#[derive(Debug, PartialEq, Clone, Parser)]
+pub enum Suit {
+    Hearts,
+    Diamonds,
+    Clubs,
+    Spades,
+}
+impl Suit {
+    pub fn to_string(&self) -> &'static str {
+        match self {
+            Suit::Hearts => "h",
+            Suit::Diamonds => "d",
+            Suit::Clubs => "c",
+            Suit::Spades => "s",
+        }
+    }
+}
+
+
 #[derive(Debug, PartialEq)]
 pub enum Rank {
     Ace,
@@ -662,111 +568,22 @@ pub enum Rank {
     King,
 }
 
-
-#[derive(Debug)]
-pub struct HandScore {
-    value_scoring: HandType,
-
-}
-
-impl HandScore {
-    pub fn new() -> Self {
-        let ht = HandType::new();
-        Self {
-            value_scoring: ht
-        }
-    }
-
-    pub fn display_point_values(&self) {
-        println!("{:?}", self.value_scoring);
-    }
-}
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub struct HandType {
-    high_card: u8,
-    pair: u8,
-    two_pair: u8,
-    trips: u8,
-    straight: u8,
-    flush: u8,
-    full_house: u8, 
-    quads: u8,
-    straight_flush: u8,
-    royal_flush: u8,
-}
-impl HandType {
-    pub fn new() -> Self {
-        Self {
-            high_card: 1,
-            pair: 2,
-            two_pair: 3,
-            trips: 4,
-            straight: 5,
-            flush: 6,
-            full_house: 7,
-            quads: 8,
-            straight_flush: 9,
-            royal_flush: 10,
+impl Rank {
+    pub fn to_string(&self) -> &'static str {
+        match self {
+            Rank::Two => "2",
+            Rank::Three => "3",
+            Rank::Four => "4",
+            Rank::Five => "5",
+            Rank::Six => "6",
+            Rank::Seven => "7",
+            Rank::Eight => "8",
+            Rank::Nine => "9",
+            Rank::Ten => "T",
+            Rank::Jack => "J",
+            Rank::Queen => "Q",
+            Rank::King => "K",
+            Rank::Ace => "A",
         }
     }
 }
-/*
-IMPORTANT 
-two-tiered scoring system
-
-we can evaluate the point totals for situations where straight vs straight occurs,
-the max sum of all evaluated hands will be best
-at a specific level this can be pruned
-if we know for example best hand is in a higher rank indicated by 
-multiplying the base score, 
-
-EXAMPLE
-
-Pair of 4s
-4pts each
-8*2 = 16 point hand value
-
-TwoPair
-4s and 3s
-(2 is the pair rank multiple) 
-4*2 + 3*2 = 14 
-        -> 14 * 3 (two pair rank multiple of 3) = 42
-
-10s and Jacks
-10 + 11 -> ans * 3 = 63
-42 * 3 = 126
-
-Jacks and Queens
-(11 + 12) * 3 = 69
-
-Aces and Kings (top range of two pairs)
-14 + 13 
-* 3
-= 81
-
-at minimum sets must be > 81
-Set of 2s
-n*rank_multiple squared
-(2*5)^2
-10 * 10 = 100
-
-but this means for sets, (14*5)^2 now is the min value
-of straight hands
-
-//Straights
-
-4-5-6-7-8
-
-4+5+6+7+8 = 30*5 ^2
-
-2+3+4+5+6 = 20*5 ^2
-need to recognize A2345 as worse point value
-
-
- */
-
-
-
-

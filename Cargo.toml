@@ -1,11 +1,12 @@
 [package]
 name = "holdem"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+aya_poker = "0.1.0"
 clap = {version="4.1.8", features=["derive"]}
 context = "3.0.0"
 csv = "1.3.0"
